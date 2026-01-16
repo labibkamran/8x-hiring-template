@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/contexts/theme-context"
 import { Footer } from "@/components/footer"
 import { Toaster } from "sonner"
 import "./globals.css"
+import { Navigation } from "@/components/navigation"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <SubscriptionProvider>
+            <Navigation />
               <div className="flex-1 flex flex-col">
                 {children}
               </div>
