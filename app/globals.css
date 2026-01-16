@@ -2,8 +2,8 @@
  * Global CSS Styles
  * 
  * Defines the application's design system including color tokens, typography,
- * and base styles for both light and dark modes. Uses Indigo as primary color
- * with Slate/Gray neutrals and semantic colors for feedback states.
+ * and base styles. Dark mode is the default theme with optional light mode.
+ * Uses Indigo as primary color with Slate neutrals and semantic feedback colors.
  */
 
 @import "tailwindcss";
@@ -11,72 +11,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #FFFFFF;
-  --foreground: #111827;
-  --surface: #F9FAFB;
-  
-  --card: #FFFFFF;
-  --card-foreground: #111827;
-  --popover: #FFFFFF;
-  --popover-foreground: #111827;
-  
-  --primary: #6366F1;
-  --primary-hover: #4F46E5;
-  --primary-light: #EEF2FF;
-  --primary-foreground: #FFFFFF;
-  
-  --secondary: #F9FAFB;
-  --secondary-foreground: #111827;
-  
-  --muted: #F9FAFB;
-  --muted-foreground: #6B7280;
-  
-  --accent: #EEF2FF;
-  --accent-foreground: #6366F1;
-  
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  
-  --success: #10B981;
-  --success-foreground: #FFFFFF;
-  
-  --warning: #F59E0B;
-  --warning-foreground: #FFFFFF;
-  
-  --info: #3B82F6;
-  --info-foreground: #FFFFFF;
-  
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: #6366F1;
-  
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-disabled: #9CA3AF;
-  
-  --chart-1: #6366F1;
-  --chart-2: #8B5CF6;
-  --chart-3: #EC4899;
-  --chart-4: #10B981;
-  --chart-5: #F59E0B;
-  
-  --radius: 0.5rem;
-  
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #6366F1;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF2FF;
-  --sidebar-accent-foreground: #6366F1;
-  --sidebar-border: #E5E7EB;
-  --sidebar-ring: #6366F1;
-  
-  --gradient-hero: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
-  --gradient-cards: linear-gradient(135deg, #F093FB 0%, #F5576C 100%);
-  --gradient-pro-badge: linear-gradient(135deg, #FFA8A8 0%, #FCFF00 100%);
-}
-
-.dark {
   --background: #0F172A;
   --foreground: #F1F5F9;
   --surface: #1E293B;
@@ -126,6 +60,8 @@
   --chart-4: #34D399;
   --chart-5: #FBBF24;
   
+  --radius: 0.5rem;
+  
   --sidebar: #1E293B;
   --sidebar-foreground: #F1F5F9;
   --sidebar-primary: #818CF8;
@@ -134,6 +70,70 @@
   --sidebar-accent-foreground: #818CF8;
   --sidebar-border: #334155;
   --sidebar-ring: #818CF8;
+  
+  --gradient-hero: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+  --gradient-cards: linear-gradient(135deg, #F093FB 0%, #F5576C 100%);
+  --gradient-pro-badge: linear-gradient(135deg, #FFA8A8 0%, #FCFF00 100%);
+}
+
+.light {
+  --background: #FFFFFF;
+  --foreground: #111827;
+  --surface: #F9FAFB;
+  
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --popover: #FFFFFF;
+  --popover-foreground: #111827;
+  
+  --primary: #6366F1;
+  --primary-hover: #4F46E5;
+  --primary-light: #EEF2FF;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #F9FAFB;
+  --secondary-foreground: #111827;
+  
+  --muted: #F9FAFB;
+  --muted-foreground: #6B7280;
+  
+  --accent: #EEF2FF;
+  --accent-foreground: #6366F1;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  
+  --warning: #F59E0B;
+  --warning-foreground: #FFFFFF;
+  
+  --info: #3B82F6;
+  --info-foreground: #FFFFFF;
+  
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #6366F1;
+  
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-disabled: #9CA3AF;
+  
+  --chart-1: #6366F1;
+  --chart-2: #8B5CF6;
+  --chart-3: #EC4899;
+  --chart-4: #10B981;
+  --chart-5: #F59E0B;
+  
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #6366F1;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #6366F1;
 }
 
 @theme inline {
