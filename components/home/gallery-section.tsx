@@ -2,10 +2,13 @@
  * Gallery Section Component
  * 
  * Displays example AI-generated videos in a masonry-style grid layout.
- * Videos are loaded from public/example-videos directory.
+ * Videos are loaded from public/example-videos directory with lazy loading
+ * and skeleton states for better performance.
  */
 
 "use client"
+
+import { useState, useRef, useEffect } from "react"
 
 interface GalleryItem {
   id: number
@@ -24,28 +27,76 @@ const GALLERY_ITEMS: GalleryItem[] = [
   { id: 8, src: "/example-videos/80s-man.mp4", aspectRatio: "square" },
 ]
 
+function VideoSkeleton({ aspectRatio }: { aspectRatio: string }) {
+  return (
+    <div 
+      className="absolute inset-0 bg-surface animate-pulse flex items-center justify-center"
+      style={{ minHeight: aspectRatio === "portrait" ? "400px" : "200px" }}
+    >
+      <div className="w-12 h-12 rounded-full bg-border/50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+      </div>
+    </div>
+  )
+}
+
 function GalleryCard({ item }: { item: GalleryItem }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
   const aspectClasses = {
     portrait: "row-span-2",
     landscape: "col-span-2",
     square: "",
   }
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: "100px", threshold: 0.1 }
+    )
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (isInView && videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }, [isInView, isLoaded])
+
   return (
     <div
+      ref={containerRef}
       className={`relative rounded-2xl overflow-hidden bg-surface border border-border/50 ${aspectClasses[item.aspectRatio]}`}
+      style={{ minHeight: item.aspectRatio === "portrait" ? "400px" : "200px" }}
     >
-      <video
-        src={item.src}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="w-full h-full object-cover"
-        style={{
-          minHeight: item.aspectRatio === "portrait" ? "400px" : "200px",
-        }}
-      />
+      {!isLoaded && <VideoSkeleton aspectRatio={item.aspectRatio} />}
+      
+      {isInView && (
+        <video
+          ref={videoRef}
+          src={item.src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onLoadedData={() => setIsLoaded(true)}
+          className={`w-full h-full object-cover transition-opacity duration-500 ${isLoaded ? "opacity-100" : "opacity-0"}`}
+          style={{ minHeight: item.aspectRatio === "portrait" ? "400px" : "200px" }}
+        />
+      )}
     </div>
   )
 }

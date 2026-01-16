@@ -11,7 +11,6 @@ import { HeroSection, GallerySection, HowItWorksSection } from "@/components/hom
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       <HeroSection />
       <HowItWorksSection />
       <GallerySection />
