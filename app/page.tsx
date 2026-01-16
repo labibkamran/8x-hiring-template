@@ -6,13 +6,14 @@
  */
 
 import { Navigation } from "@/components/navigation"
-import { HeroSection, GallerySection } from "@/components/home"
+import { HeroSection, GallerySection, HowItWorksSection } from "@/components/home"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <HeroSection />
+      <HowItWorksSection />
       <GallerySection />
     </div>
   )
