@@ -5,3 +5,4 @@
  */
 
 export { HeroSection } from "./hero-section"
+export { GallerySection } from "./gallery-section"
