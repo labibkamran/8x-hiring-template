@@ -5,6 +5,7 @@ import PlanCard from "./PlanCard"
 import Faq from "./Faq"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 type Plan = {
   id: string
@@ -21,14 +22,24 @@ export default function Plans() {
   const router = useRouter()
   const [plans, setPlans] = useState<Plan[]>([])
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
+  const [isPlansLoading, setIsPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState<string | null>(null)
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const res = await fetch("/api/pricing/plans", { cache: "no-store" })
         const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json?.error || "Failed to load plans")
+        }
         setPlans(json?.plans ?? [])
+        setPlansError(null)
       } catch {
         setPlans([])
+        setPlansError("Unable to load plans right now.")
+        toast.error("Failed to load pricing plans.")
+      } finally {
+        setIsPlansLoading(false)
       }
     }
 
@@ -46,9 +57,13 @@ export default function Plans() {
       try {
         const res = await fetch("/api/pricing/subscription", { cache: "no-store" })
         const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json?.error || "Failed to load subscription")
+        }
         setCurrentPlanId(json?.subscription?.plan_id ?? null)
       } catch {
         setCurrentPlanId(null)
+        toast.error("Failed to load subscription.")
       }
     }
 
@@ -74,11 +89,12 @@ export default function Plans() {
 
   const getActionLabel = useCallback(
     (plan: Plan) => {
+      if (authLoading) return null
       if (plan.slug?.toLowerCase() === "free") return null
       if (currentPlanSlug === plan.slug) return "Renew"
       return "Subscribe"
     },
-    [currentPlanSlug]
+    [authLoading, currentPlanSlug]
   )
 
   return (
@@ -93,18 +109,26 @@ export default function Plans() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((p) => (
-            <PlanCard
-              key={p.id}
-              plan={p}
-              isCurrent={currentPlanSlug === p.slug}
-              isFeatured={p.slug?.toLowerCase() === "pro" || p.name?.toLowerCase() === "pro"}
-              actionLabel={getActionLabel(p)}
-              onAction={handleAction}
-            />
-          ))}
-        </div>
+        {isPlansLoading ? (
+          <div className="mt-12 text-center text-sm text-muted-foreground">Loading plans...</div>
+        ) : plansError ? (
+          <div className="mt-12 text-center text-sm text-muted-foreground">{plansError}</div>
+        ) : plans.length === 0 ? (
+          <div className="mt-12 text-center text-sm text-muted-foreground">No plans available right now.</div>
+        ) : (
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {plans.map((p) => (
+              <PlanCard
+                key={p.id}
+                plan={p}
+                isCurrent={currentPlanSlug === p.slug}
+                isFeatured={p.slug?.toLowerCase() === "pro" || p.name?.toLowerCase() === "pro"}
+                actionLabel={getActionLabel(p)}
+                onAction={handleAction}
+              />
+            ))}
+          </div>
+        )}
 
         <Faq />
       </div>
