@@ -20,10 +20,12 @@ export default function PlanCard({
   plan,
   isCurrent = false,
   isFeatured = false,
+  onSubscribe,
 }: {
   plan: Plan
   isCurrent?: boolean
   isFeatured?: boolean
+  onSubscribe?: (plan: Plan) => void
 }) {
   return (
     <Card
@@ -71,7 +73,11 @@ export default function PlanCard({
       </CardContent>
 
       <CardFooter className="pt-4">
-        <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary-hover">
+        <Button
+          className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isCurrent}
+          onClick={() => onSubscribe?.(plan)}
+        >
           {isCurrent ? "Manage" : "Subscribe"}
         </Button>
       </CardFooter>

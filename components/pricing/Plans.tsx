@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import PlanCard from "./PlanCard"
 import Faq from "./Faq"
 import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 type Plan = {
   id: string
@@ -17,6 +18,7 @@ type Plan = {
 
 export default function Plans() {
   const { user, isLoading: authLoading } = useAuth()
+  const router = useRouter()
   const [plans, setPlans] = useState<Plan[]>([])
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   useEffect(() => {
@@ -59,6 +61,17 @@ export default function Plans() {
     return found?.slug ?? null
   }, [plans, currentPlanId])
 
+  const handleSubscribe = useCallback(
+    (plan: Plan) => {
+      if (!user) {
+        router.push("/auth/login?next=/pricing")
+        return
+      }
+      router.push(`/pricing/confirm?plan=${encodeURIComponent(plan.slug)}`)
+    },
+    [router, user]
+  )
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_0%,rgba(129,140,248,0.25),transparent_55%)]" />
@@ -78,6 +91,7 @@ export default function Plans() {
               plan={p}
               isCurrent={currentPlanSlug === p.slug}
               isFeatured={p.slug?.toLowerCase() === "pro" || p.name?.toLowerCase() === "pro"}
+              onSubscribe={handleSubscribe}
             />
           ))}
         </div>
