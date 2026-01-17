@@ -1,3 +1,8 @@
+/**
+ * Sign Up Page
+ * Account registration with email and password
+ * Uses client-side Supabase for proper session management
+ */
 "use client"
 
 import type React from "react"
@@ -6,29 +11,29 @@ import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Navigation } from "@/components/navigation"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
+import { Mail, Lock, ArrowRight, Gift } from "lucide-react"
+import { toast } from "sonner"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [repeatPassword, setRepeatPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [errorField, setErrorField] = useState<"email" | "password" | "confirmPassword" | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const [returnUrl, setReturnUrl] = useState<string | null>(null)
   const { user, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search)
-      setReturnUrl(params.get('returnUrl'))
+      setReturnUrl(params.get("returnUrl"))
     }
   }, [])
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
       const destination = returnUrl || "/"
@@ -36,117 +41,216 @@ export default function SignUpPage() {
     }
   }, [user, authLoading, returnUrl, router])
 
+  // Clear error field highlight when user starts typing
+  const handleEmailChange = (value: string) => {
+    setEmail(value)
+    if (errorField === "email") {
+      setErrorField(null)
+    }
+  }
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value)
+    if (errorField === "password" || errorField === "confirmPassword") {
+      setErrorField(null)
+    }
+  }
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value)
+    if (errorField === "confirmPassword") {
+      setErrorField(null)
+    }
+  }
+
+  const showError = (message: string, field?: "email" | "password" | "confirmPassword") => {
+    toast.error(message)
+    if (field) setErrorField(field)
+    setIsLoading(false)
+  }
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
+    setErrorField(null)
 
-    if (password !== repeatPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
+    const trimmedEmail = email.trim().toLowerCase()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    // Client-side validation (prevents unnecessary API calls)
+    if (!trimmedEmail) {
+      showError("Please enter your email address", "email")
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      setIsLoading(false)
+    if (!emailRegex.test(trimmedEmail)) {
+      showError("Please enter a valid email address", "email")
+      return
+    }
+
+    if (!password) {
+      showError("Please enter a password", "password")
+      return
+    }
+
+    if (password.length < 8) {
+      showError("Password must be at least 8 characters", "password")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      showError("Passwords do not match", "confirmPassword")
       return
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      // Use client-side Supabase for proper session management
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: trimmedEmail,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
       })
-      if (error) throw error
 
-      // Redirect to returnUrl if provided, otherwise to home
-      if (returnUrl) {
-        router.push(returnUrl)
-      } else {
-        router.push("/")
+      if (signUpError) {
+        // Handle specific Supabase errors
+        if (signUpError.message.includes("already registered")) {
+          showError("This email is already registered. Please sign in instead.", "email")
+        } else {
+          showError(signUpError.message)
+        }
+        return
       }
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
-    } finally {
-      setIsLoading(false)
+
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        toast.info("Please check your email to confirm your account.")
+        setIsLoading(false)
+        return
+      }
+
+      // Auto sign-in successful - show success toast
+      toast.success("Account created successfully!")
+      // The auth context will detect the session and redirect
+    } catch {
+      showError("Unable to connect. Please check your internet connection.")
     }
   }
 
+  // Determine input border color based on error state
+  const getInputClassName = (field: "email" | "password" | "confirmPassword") => {
+    const baseClass = "pl-12 py-3.5 h-auto bg-secondary rounded-xl transition-colors"
+    if (errorField === field) {
+      return `${baseClass} border-destructive focus:border-destructive focus-visible:ring-destructive/30`
+    }
+    return `${baseClass} border-border`
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-foreground">Create account</h1>
-            <p className="mt-2 text-muted-foreground">Start your journey today</p>
+    <main className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] -z-10" />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -z-10" />
+      
+      <div className="w-full max-w-[480px]">
+        <div className="bg-card border border-primary/20 rounded-xl shadow-2xl p-8 lg:p-10">
+          <div className="text-center mb-8">
+            <h1 className="text-foreground text-3xl font-bold tracking-tight mb-3">Create your account</h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
+              Start building with the next generation of AI.
+            </p>
           </div>
 
-          <form onSubmit={handleSignUp} className="mt-8 space-y-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
+          <form onSubmit={handleSignUp} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">Email Address</Label>
+              <div className="relative">
+                <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                  errorField === "email" ? "text-destructive" : "text-muted-foreground"
+                }`} />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
-                  required
+                  placeholder="name@company.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1"
-                  placeholder="At least 6 characters"
-                />
-              </div>
-              <div>
-                <Label htmlFor="repeat-password">Confirm Password</Label>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                  className="mt-1"
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  className={getInputClassName("email")}
+                  disabled={isLoading}
+                  aria-invalid={errorField === "email"}
                 />
               </div>
             </div>
 
-            {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password" className="text-sm font-medium text-muted-foreground">Password</Label>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Min. 8 characters</span>
               </div>
-            )}
+              <div className="relative">
+                <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                  errorField === "password" ? "text-destructive" : "text-muted-foreground"
+                }`} />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  className={getInputClassName("password")}
+                  disabled={isLoading}
+                  aria-invalid={errorField === "password"}
+                />
+              </div>
+            </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create Account"}
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-muted-foreground">Confirm Password</Label>
+              <div className="relative">
+                <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                  errorField === "confirmPassword" ? "text-destructive" : "text-muted-foreground"
+                }`} />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                  className={getInputClassName("confirmPassword")}
+                  disabled={isLoading}
+                  aria-invalid={errorField === "confirmPassword"}
+                />
+              </div>
+            </div>
 
-            <p className="text-center text-sm text-muted-foreground">
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                className="w-full py-4 h-auto rounded-xl shadow-lg shadow-primary/20 font-bold group"
+                disabled={isLoading}
+              >
+                <span>{isLoading ? "Creating account..." : "Create Account"}</span>
+                {!isLoading && <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />}
+              </Button>
+            </div>
+
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start gap-3 mt-6">
+              <Gift className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground leading-normal">
+                <span className="font-bold text-primary italic">Bonus:</span> You'll receive 100 free credits instantly upon registration to explore our models.
+              </p>
+            </div>
+          </form>
+
+          <div className="mt-8 text-center border-t border-border/50 pt-6">
+            <p className="text-muted-foreground text-sm">
               Already have an account?{" "}
               <Link
                 href={returnUrl ? `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/auth/login"}
-                className="text-primary hover:underline"
+                className="text-primary font-semibold hover:underline decoration-2 underline-offset-4 ml-1"
               >
-                Sign in
+                Log in
               </Link>
             </p>
-          </form>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

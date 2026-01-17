@@ -13,19 +13,55 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, Coins, Moon, Sun } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, Coins, Moon, Sun, User, LogOut } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useTheme } from "@/contexts/theme-context"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { toast } from "sonner"
 
 export function Navigation() {
   const pathname = usePathname()
-  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const { user, isLoading, signOut } = useAuth()
   const { isPro } = useSubscription()
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setAvatarDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setAvatarDropdownOpen(false)
+  }, [pathname])
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+    try {
+      await signOut()
+      setAvatarDropdownOpen(false)
+      toast.success("Signed out successfully")
+      router.push("/")
+    } catch {
+      toast.error("Failed to sign out. Please try again.")
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
 
   return (
     <nav className="border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full">
@@ -104,13 +140,42 @@ export function Navigation() {
                         </Button>
                       </Link>
                     )}
-                    <Link href="/profile">
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                    {/* Avatar with dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                      <button
+                        onClick={() => setAvatarDropdownOpen(!avatarDropdownOpen)}
+                        className="w-8 h-8 rounded-full bg-primary flex items-center justify-center hover:ring-2 hover:ring-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        aria-expanded={avatarDropdownOpen}
+                        aria-haspopup="true"
+                      >
                         <span className="text-sm font-medium text-primary-foreground">
                           {user.email?.charAt(0).toUpperCase() || "U"}
                         </span>
-                      </div>
-                    </Link>
+                      </button>
+                      
+                      {/* Dropdown menu */}
+                      {avatarDropdownOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <Link
+                            href="/profile"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-surface transition-colors"
+                            onClick={() => setAvatarDropdownOpen(false)}
+                          >
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            Account
+                          </Link>
+                          <div className="border-t border-border my-1" />
+                          <button
+                            onClick={handleSignOut}
+                            disabled={isSigningOut}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            {isSigningOut ? "Signing out..." : "Sign out"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
@@ -193,10 +258,11 @@ export function Navigation() {
                     </div>
                     <Link
                       href="/profile"
-                      className="block py-2"
+                      className="flex items-center gap-3 py-2 text-foreground"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Profile
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      Account
                     </Link>
                     {!isPro && (
                       <Link
@@ -206,6 +272,17 @@ export function Navigation() {
                         <Button className="w-full">Upgrade</Button>
                       </Link>
                     )}
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        handleSignOut()
+                      }}
+                      disabled={isSigningOut}
+                      className="flex items-center gap-3 w-full py-2 text-destructive disabled:opacity-50"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {isSigningOut ? "Signing out..." : "Sign out"}
+                    </button>
                   </>
                 ) : (
                   <>
