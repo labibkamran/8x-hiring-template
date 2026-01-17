@@ -61,7 +61,7 @@ export default function Plans() {
     return found?.slug ?? null
   }, [plans, currentPlanId])
 
-  const handleSubscribe = useCallback(
+  const handleAction = useCallback(
     (plan: Plan) => {
       if (!user) {
         router.push("/auth/login?next=/pricing")
@@ -70,6 +70,15 @@ export default function Plans() {
       router.push(`/pricing/confirm?plan=${encodeURIComponent(plan.slug)}`)
     },
     [router, user]
+  )
+
+  const getActionLabel = useCallback(
+    (plan: Plan) => {
+      if (plan.slug?.toLowerCase() === "free") return null
+      if (currentPlanSlug === plan.slug) return "Renew"
+      return "Subscribe"
+    },
+    [currentPlanSlug]
   )
 
   return (
@@ -91,7 +100,8 @@ export default function Plans() {
               plan={p}
               isCurrent={currentPlanSlug === p.slug}
               isFeatured={p.slug?.toLowerCase() === "pro" || p.name?.toLowerCase() === "pro"}
-              onSubscribe={handleSubscribe}
+              actionLabel={getActionLabel(p)}
+              onAction={handleAction}
             />
           ))}
         </div>
