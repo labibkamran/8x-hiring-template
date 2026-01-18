@@ -1,9 +1,12 @@
 /*
   Subscription card with current plan status and downgrade action.
 */
+/*
+  Subscription overview with dashboard data and cancel actions.
+*/
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, CreditCard, Shield } from "lucide-react"
@@ -28,6 +31,15 @@ export function SubscriptionSection() {
   const [showDowngradeDialog, setShowDowngradeDialog] = useState(false)
   const isPaid = tier !== "free"
   const tierLabel = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "Free"
+  const [dashboard, setDashboard] = useState<{
+    plan_name: string
+    plan_slug: string
+    price_monthly: number
+    credits_balance: number
+    credits_per_month: number
+    cost_per_video: number
+  } | null>(null)
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true)
 
   const handleDowngrade = async () => {
     setIsDowngrading(true)
@@ -42,6 +54,26 @@ export function SubscriptionSection() {
     }
   }
 
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const res = await fetch("/api/profile/dashboard", { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) {
+          throw new Error(json?.error || "Failed to load dashboard")
+        }
+        setDashboard(json?.dashboard ?? null)
+      } catch {
+        setDashboard(null)
+        toast.error("Failed to load subscription details.")
+      } finally {
+        setIsDashboardLoading(false)
+      }
+    }
+
+    loadDashboard()
+  }, [tier])
+
   return (
     <Card className="border-border/60 bg-card/70 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.35)]">
       <div className="flex items-center gap-3">
@@ -55,11 +87,20 @@ export function SubscriptionSection() {
             <div className="text-sm text-muted-foreground">Current plan</div>
             <div className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              {tierLabel}
+              {dashboard?.plan_name ?? tierLabel}
             </div>
           </div>
           <div className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
             {isPaid ? "Active" : "Free tier"}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
+          <div className="rounded-xl border border-border/60 bg-background/60 p-3">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Credits remaining</div>
+            <div className="mt-2 text-lg font-semibold text-foreground">
+              {isDashboardLoading ? "Loading..." : dashboard?.credits_balance ?? 0}
+            </div>
           </div>
         </div>
 
