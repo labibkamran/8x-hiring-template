@@ -6,6 +6,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useSubscription } from "@/contexts/subscription-context"
 import { Button } from "@/components/ui/button"
 
 type Plan = {
@@ -22,6 +23,7 @@ export default function PricingConfirmPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isLoading: authLoading } = useAuth()
+  const { refresh } = useSubscription()
   const [plans, setPlans] = useState<Plan[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const planSlug = searchParams.get("plan") ?? ""
@@ -62,6 +64,7 @@ export default function PricingConfirmPage() {
         body: JSON.stringify({ plan_slug: planSlug }),
       })
       if (res.ok) {
+        await refresh()
         router.replace("/pricing")
       }
     } finally {

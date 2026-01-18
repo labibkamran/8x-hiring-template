@@ -23,9 +23,11 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export function SubscriptionSection() {
-  const { isPro, tier, downgradeToFree } = useSubscription()
+  const { tier, downgradeToFree } = useSubscription()
   const [isDowngrading, setIsDowngrading] = useState(false)
   const [showDowngradeDialog, setShowDowngradeDialog] = useState(false)
+  const isPaid = tier !== "free"
+  const tierLabel = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "Free"
 
   const handleDowngrade = async () => {
     setIsDowngrading(true)
@@ -53,21 +55,21 @@ export function SubscriptionSection() {
             <div className="text-sm text-muted-foreground">Current plan</div>
             <div className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              {isPro ? "Pro" : "Free"}
+              {tierLabel}
             </div>
           </div>
           <div className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-            {isPro ? "Active" : "Free tier"}
+            {isPaid ? "Active" : "Free tier"}
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
           <Shield className="h-4 w-4 text-primary" />
-          {isPro ? "Priority models and higher limits enabled." : "Upgrade to unlock pro models and higher limits."}
+          {isPaid ? "Priority models and higher limits enabled." : "Upgrade to unlock pro models and higher limits."}
         </div>
       </div>
 
-      {isPro ? (
+      {isPaid ? (
         <div className="mt-5 flex items-center gap-3">
           <AlertDialog open={showDowngradeDialog} onOpenChange={setShowDowngradeDialog}>
             <AlertDialogTrigger asChild>

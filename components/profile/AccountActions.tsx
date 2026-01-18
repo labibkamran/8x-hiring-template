@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LogOut, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +23,8 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export function AccountActions() {
+  const router = useRouter()
+  const { signOut } = useAuth()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -29,13 +33,13 @@ export function AccountActions() {
     if (isLoggingOut) return
     setIsLoggingOut(true)
     try {
-      await fetch("/api/auth/signout", { method: "POST" })
+      await signOut()
+      router.push("/")
     } catch {
       toast.error("Failed to sign out. Please try again.")
+    } finally {
       setIsLoggingOut(false)
-      return
     }
-    window.location.href = "/"
   }
 
   const handleDeleteAccount = async () => {
