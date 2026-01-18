@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { ProfileClient } from "./profile-client"
+import { ProfileClient } from "@/components/profile/ProfileClient"
 
 export const dynamic = "force-dynamic"
 
