@@ -11,7 +11,7 @@ import { AccountActions } from "@/components/profile/AccountActions"
 interface ProfileClientProps {
   user: {
     id: string
-    email: string
+    email?: string
   }
 }
 
