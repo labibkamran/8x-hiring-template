@@ -25,12 +25,11 @@ export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading, signOut } = useAuth()
-  const { tier } = useSubscription()
+  const { tier, credits } = useSubscription()
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const [credits, setCredits] = useState<number | null>(null)
   const [planName, setPlanName] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -54,7 +53,6 @@ export function Navigation() {
   useEffect(() => {
     const loadDashboard = async () => {
       if (!user) {
-        setCredits(null)
         setPlanName(null)
         return
       }
@@ -62,10 +60,8 @@ export function Navigation() {
         const res = await fetch("/api/profile/dashboard", { cache: "no-store" })
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || "Failed to load dashboard")
-        setCredits(json?.dashboard?.credits_balance ?? 0)
         setPlanName(json?.dashboard?.plan_name ?? null)
       } catch {
-        setCredits(null)
         setPlanName(null)
       }
     }
