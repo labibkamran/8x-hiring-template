@@ -383,6 +383,7 @@ CREATE TABLE IF NOT EXISTS public.generations (
   aspect_ratio TEXT NOT NULL,
   quality TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
+  preview_url TEXT,
   result_url TEXT,
   error_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -458,8 +459,8 @@ BEGIN
   ORDER BY random()
   LIMIT 1;
 
-  INSERT INTO public.generations (user_id, tool_type, prompt, model, aspect_ratio, quality, status, result_url, completed_at)
-  VALUES (uid, in_tool_type, in_prompt, in_model, in_aspect_ratio, in_quality, 'completed', chosen_url, NOW())
+  INSERT INTO public.generations (user_id, tool_type, prompt, model, aspect_ratio, quality, status, preview_url, result_url, completed_at)
+  VALUES (uid, in_tool_type, in_prompt, in_model, in_aspect_ratio, in_quality, 'completed', chosen_url, chosen_url, NOW())
   RETURNING id INTO new_generation_id;
 
   RETURN new_generation_id;
@@ -476,6 +477,7 @@ SELECT
   g.aspect_ratio,
   g.quality,
   g.status,
+  g.preview_url,
   CASE
     WHEN p.slug = 'free' THEN NULL
     ELSE g.result_url
