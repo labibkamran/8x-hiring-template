@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 export function SubscriptionSection() {
   const { tier, credits, downgradeToFree } = useSubscription()
