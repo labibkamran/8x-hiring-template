@@ -6,7 +6,7 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Image as ImageIcon, Sparkles, Video, Trash2 } from "lucide-react"
+import { Image as ImageIcon, Sparkles, Video } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
