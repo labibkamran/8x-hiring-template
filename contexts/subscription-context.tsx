@@ -15,6 +15,7 @@ type SubscriptionContextType = {
   isLoading: boolean
   isPro: boolean
   tier: Tier
+  credits: number | null
   upgradeToPro: () => Promise<void>
   downgradeToFree: () => Promise<void>
   refresh: () => Promise<void>
@@ -25,6 +26,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isLoading: true,
   isPro: false,
   tier: "free",
+  credits: null,
   upgradeToPro: async () => {},
   downgradeToFree: async () => {},
   refresh: async () => {},
@@ -33,6 +35,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [credits, setCredits] = useState<number | null>(null)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -52,9 +55,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const subJson = await subRes.json()
       if (!subRes.ok) throw new Error(subJson?.error || "Failed to load subscription")
 
+      const dashboardRes = await fetch("/api/profile/dashboard", { cache: "no-store" })
+      const dashboardJson = await dashboardRes.json()
+      if (!dashboardRes.ok) throw new Error(dashboardJson?.error || "Failed to load dashboard")
+
       const planId = subJson?.subscription?.plan_id ?? null
       if (!planId) {
         setSubscription(null)
+        setCredits(dashboardJson?.dashboard?.credits_balance ?? null)
         setIsLoading(false)
         return
       }
@@ -62,11 +70,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const foundPlan = (plansJson?.plans ?? []).find((p: any) => p.id === planId)
       const planSlug = (foundPlan?.slug ?? "free") as Tier
       setSubscription({ plan_id: planId, plan_slug: planSlug })
+      setCredits(dashboardJson?.dashboard?.credits_balance ?? null)
 
       setIsLoading(false)
     } catch (error) {
       console.error("[SubscriptionContext] Fetch error:", error)
       setSubscription(null)
+      setCredits(null)
       setIsLoading(false)
     }
   }, [])
@@ -123,7 +133,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const isPro = tier !== "free"
 
   return (
-    <SubscriptionContext.Provider value={{ subscription, isLoading, isPro, tier, upgradeToPro, downgradeToFree, refresh }}>
+    <SubscriptionContext.Provider value={{ subscription, isLoading, isPro, tier, credits, upgradeToPro, downgradeToFree, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   )

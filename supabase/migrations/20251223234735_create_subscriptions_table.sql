@@ -367,3 +367,128 @@ GRANT EXECUTE ON FUNCTION public.spend_credits(INTEGER, TEXT) TO authenticated;
 -- Monthly top-up function should NOT be callable by normal users
 REVOKE EXECUTE ON FUNCTION public.process_monthly_topups() FROM authenticated;
 
+-- 12. GENERATIONS + DEMO VIDEOS (Secure generation flow)
+CREATE TABLE IF NOT EXISTS public.demo_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  result_url TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.generations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  tool_type TEXT NOT NULL CHECK (tool_type IN ('video')),
+  prompt TEXT,
+  model TEXT NOT NULL,
+  aspect_ratio TEXT NOT NULL,
+  quality TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
+  preview_url TEXT,
+  result_url TEXT,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_generations_user_id ON public.generations(user_id);
+CREATE INDEX IF NOT EXISTS idx_generations_created_at ON public.generations(created_at DESC);
+
+ALTER TABLE public.generations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users view own generations" ON public.generations;
+CREATE POLICY "Users view own generations"
+  ON public.generations FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+
+REVOKE ALL ON public.generations FROM authenticated;
+REVOKE ALL ON public.demo_videos FROM authenticated;
+
+INSERT INTO public.demo_videos (result_url)
+VALUES
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768813031/bgvideo_k6qvgv.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768813020/running-man_e4ankw.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768813013/vhs-fisheye_t975pg.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768812999/girl-porsche_wkuzdx.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768813001/vintage-woman_iamdzf.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768812993/timelapse-people_akpb8h.mp4'),
+('https://res.cloudinary.com/dyoxyiy1v/video/upload/v1768812992/80s-man_a5u4zk.mp4')
+ON CONFLICT DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.create_generation(
+  in_tool_type TEXT,
+  in_prompt TEXT,
+  in_model TEXT,
+  in_aspect_ratio TEXT,
+  in_quality TEXT,
+  in_required_credits INTEGER
+)
+RETURNS UUID AS $$
+DECLARE
+  uid UUID;
+  plan_slug TEXT;
+  new_generation_id UUID;
+  chosen_url TEXT;
+BEGIN
+  uid := auth.uid();
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT p.slug
+  INTO plan_slug
+  FROM public.subscriptions s
+  JOIN public.plans p ON p.id = s.plan_id
+  WHERE s.user_id = uid
+    AND s.status = 'active'
+  LIMIT 1;
+
+  IF plan_slug IS NULL THEN
+    RAISE EXCEPTION 'Subscription not found';
+  END IF;
+
+  IF plan_slug = 'free' THEN
+    IF in_model = 'sora' OR in_aspect_ratio = '16:9' OR in_quality = '1080' THEN
+      RAISE EXCEPTION 'Upgrade to Pro to use selected settings';
+    END IF;
+  END IF;
+
+  PERFORM public.spend_credits(in_required_credits, 'video_generation');
+
+  SELECT result_url
+  INTO chosen_url
+  FROM public.demo_videos
+  ORDER BY random()
+  LIMIT 1;
+
+  INSERT INTO public.generations (user_id, tool_type, prompt, model, aspect_ratio, quality, status, preview_url, result_url, completed_at)
+  VALUES (uid, in_tool_type, in_prompt, in_model, in_aspect_ratio, in_quality, 'completed', chosen_url, chosen_url, NOW())
+  RETURNING id INTO new_generation_id;
+
+  RETURN new_generation_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE VIEW public.generations_safe AS
+SELECT
+  g.id,
+  g.user_id,
+  g.tool_type,
+  g.prompt,
+  g.model,
+  g.aspect_ratio,
+  g.quality,
+  g.status,
+  g.preview_url,
+  CASE
+    WHEN p.slug = 'free' THEN NULL
+    ELSE g.result_url
+  END AS result_url,
+  g.error_message,
+  g.created_at,
+  g.completed_at
+FROM public.generations g
+JOIN public.subscriptions s ON s.user_id = g.user_id
+JOIN public.plans p ON p.id = s.plan_id
+WHERE s.status = 'active';
+
+GRANT EXECUTE ON FUNCTION public.create_generation(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT SELECT ON public.generations_safe TO authenticated;

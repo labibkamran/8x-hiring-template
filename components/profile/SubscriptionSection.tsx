@@ -6,13 +6,12 @@
 */
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, CreditCard, Shield } from "lucide-react"
 import Link from "next/link"
 import { useSubscription } from "@/contexts/subscription-context"
-import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,22 +23,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 export function SubscriptionSection() {
-  const { tier, downgradeToFree } = useSubscription()
+  const { tier, credits, downgradeToFree } = useSubscription()
   const [isDowngrading, setIsDowngrading] = useState(false)
   const [showDowngradeDialog, setShowDowngradeDialog] = useState(false)
   const isPaid = tier !== "free"
   const tierLabel = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : "Free"
-  const [dashboard, setDashboard] = useState<{
-    plan_name: string
-    plan_slug: string
-    price_monthly: number
-    credits_balance: number
-    credits_per_month: number
-    cost_per_video: number
-  } | null>(null)
-  const [isDashboardLoading, setIsDashboardLoading] = useState(true)
 
   const handleDowngrade = async () => {
     setIsDowngrading(true)
@@ -54,26 +45,6 @@ export function SubscriptionSection() {
     }
   }
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const res = await fetch("/api/profile/dashboard", { cache: "no-store" })
-        const json = await res.json()
-        if (!res.ok) {
-          throw new Error(json?.error || "Failed to load dashboard")
-        }
-        setDashboard(json?.dashboard ?? null)
-      } catch {
-        setDashboard(null)
-        toast.error("Failed to load subscription details.")
-      } finally {
-        setIsDashboardLoading(false)
-      }
-    }
-
-    loadDashboard()
-  }, [tier])
-
   return (
     <Card className="border-border/60 bg-card/70 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.35)]">
       <div className="flex items-center gap-3">
@@ -87,7 +58,7 @@ export function SubscriptionSection() {
             <div className="text-sm text-muted-foreground">Current plan</div>
             <div className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              {dashboard?.plan_name ?? tierLabel}
+              {tierLabel}
             </div>
           </div>
           <div className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
@@ -99,7 +70,7 @@ export function SubscriptionSection() {
           <div className="rounded-xl border border-border/60 bg-background/60 p-3">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Credits remaining</div>
             <div className="mt-2 text-lg font-semibold text-foreground">
-              {isDashboardLoading ? "Loading..." : dashboard?.credits_balance ?? 0}
+              {credits ?? 0}
             </div>
           </div>
         </div>
