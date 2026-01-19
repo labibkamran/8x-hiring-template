@@ -467,7 +467,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE VIEW public.generations_safe AS
+CREATE OR REPLACE VIEW public.generations_safe
+WITH (security_invoker = true) AS
 SELECT
   g.id,
   g.user_id,
@@ -488,7 +489,8 @@ SELECT
 FROM public.generations g
 JOIN public.subscriptions s ON s.user_id = g.user_id
 JOIN public.plans p ON p.id = s.plan_id
-WHERE s.status = 'active';
+WHERE s.status = 'active'
+  AND g.user_id = auth.uid();
 
 GRANT EXECUTE ON FUNCTION public.create_generation(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT SELECT ON public.generations_safe TO authenticated;
