@@ -153,7 +153,6 @@ Schema snapshot:
 
 ### Database Architecture
 
-Mermaid diagrams render natively on GitHub. If your markdown viewer does not support Mermaid, copy the diagram into https://mermaid.live to preview it.
 
 #### System Flow
 
@@ -465,4 +464,4 @@ sequenceDiagram
 
 ---
 
-See [CANDIDATE_ASSIGNMENT.md](./CANDIDATE_ASSIGNMENT.md) for assessment instructions.
+
