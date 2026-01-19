@@ -3,14 +3,11 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react"
 import { supabase } from "@/lib/supabase/client"
 
-export type Tier = "free" | "pro"
+export type Tier = "free" | "basic" | "pro" | "enterprise"
 
 export type Subscription = {
-  id: string
-  user_id: string
-  tier: Tier
-  created_at: string
-  updated_at: string
+  plan_id: string
+  plan_slug: Tier
 }
 
 type SubscriptionContextType = {
@@ -18,6 +15,7 @@ type SubscriptionContextType = {
   isLoading: boolean
   isPro: boolean
   tier: Tier
+  credits: number | null
   upgradeToPro: () => Promise<void>
   downgradeToFree: () => Promise<void>
   refresh: () => Promise<void>
@@ -28,6 +26,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isLoading: true,
   isPro: false,
   tier: "free",
+  credits: null,
   upgradeToPro: async () => {},
   downgradeToFree: async () => {},
   refresh: async () => {},
@@ -36,6 +35,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [credits, setCredits] = useState<number | null>(null)
 
   const fetchSubscription = useCallback(async () => {
     try {
@@ -47,39 +47,36 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Try to get existing subscription
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .single()
+      const plansRes = await fetch("/api/pricing/plans", { cache: "no-store" })
+      const plansJson = await plansRes.json()
+      if (!plansRes.ok) throw new Error(plansJson?.error || "Failed to load plans")
 
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 = no rows returned (user doesn't have subscription yet)
-        console.error("[SubscriptionContext] Fetch error:", error)
+      const subRes = await fetch("/api/pricing/subscription", { cache: "no-store" })
+      const subJson = await subRes.json()
+      if (!subRes.ok) throw new Error(subJson?.error || "Failed to load subscription")
+
+      const dashboardRes = await fetch("/api/profile/dashboard", { cache: "no-store" })
+      const dashboardJson = await dashboardRes.json()
+      if (!dashboardRes.ok) throw new Error(dashboardJson?.error || "Failed to load dashboard")
+
+      const planId = subJson?.subscription?.plan_id ?? null
+      if (!planId) {
+        setSubscription(null)
+        setCredits(dashboardJson?.dashboard?.credits_balance ?? null)
+        setIsLoading(false)
+        return
       }
 
-      if (data) {
-        setSubscription(data as Subscription)
-      } else {
-        // Create default free subscription for new users
-        const { data: newSub, error: insertError } = await supabase
-          .from("subscriptions")
-          .insert({ user_id: user.id, tier: "free" })
-          .select()
-          .single()
-
-        if (insertError) {
-          console.error("[SubscriptionContext] Insert error:", insertError)
-        } else {
-          setSubscription(newSub as Subscription)
-        }
-      }
+      const foundPlan = (plansJson?.plans ?? []).find((p: any) => p.id === planId)
+      const planSlug = (foundPlan?.slug ?? "free") as Tier
+      setSubscription({ plan_id: planId, plan_slug: planSlug })
+      setCredits(dashboardJson?.dashboard?.credits_balance ?? null)
 
       setIsLoading(false)
     } catch (error) {
       console.error("[SubscriptionContext] Fetch error:", error)
       setSubscription(null)
+      setCredits(null)
       setIsLoading(false)
     }
   }, [])
@@ -90,36 +87,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [fetchSubscription])
 
   const upgradeToPro = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { error } = await supabase
-      .from("subscriptions")
-      .update({ tier: "pro" })
-      .eq("user_id", user.id)
-
-    if (error) {
-      console.error("[SubscriptionContext] Upgrade error:", error)
-      throw error
+    const res = await fetch("/api/pricing/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_slug: "pro" }),
+    })
+    if (!res.ok) {
+      const json = await res.json()
+      throw new Error(json?.error || "Upgrade failed")
     }
-
     await refresh()
   }, [refresh])
 
   const downgradeToFree = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { error } = await supabase
-      .from("subscriptions")
-      .update({ tier: "free" })
-      .eq("user_id", user.id)
-
-    if (error) {
-      console.error("[SubscriptionContext] Downgrade error:", error)
-      throw error
+    const res = await fetch("/api/pricing/cancel", { method: "POST" })
+    if (!res.ok) {
+      const json = await res.json()
+      throw new Error(json?.error || "Cancel failed")
     }
-
     await refresh()
   }, [refresh])
 
@@ -144,11 +129,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [fetchSubscription])
 
   // Compute derived values
-  const isPro = subscription?.tier === "pro"
-  const tier = subscription?.tier ?? "free"
+  const tier = subscription?.plan_slug ?? "free"
+  const isPro = tier !== "free"
 
   return (
-    <SubscriptionContext.Provider value={{ subscription, isLoading, isPro, tier, upgradeToPro, downgradeToFree, refresh }}>
+    <SubscriptionContext.Provider value={{ subscription, isLoading, isPro, tier, credits, upgradeToPro, downgradeToFree, refresh }}>
       {children}
     </SubscriptionContext.Provider>
   )

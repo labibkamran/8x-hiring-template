@@ -25,11 +25,12 @@ export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading, signOut } = useAuth()
-  const { isPro } = useSubscription()
+  const { tier, credits } = useSubscription()
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [planName, setPlanName] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -48,6 +49,25 @@ export function Navigation() {
   useEffect(() => {
     setAvatarDropdownOpen(false)
   }, [pathname])
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      if (!user) {
+        setPlanName(null)
+        return
+      }
+      try {
+        const res = await fetch("/api/profile/dashboard", { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || "Failed to load dashboard")
+        setPlanName(json?.dashboard?.plan_name ?? null)
+      } catch {
+        setPlanName(null)
+      }
+    }
+
+    loadDashboard()
+  }, [user, tier])
 
   const handleSignOut = async () => {
     setIsSigningOut(true)
@@ -131,14 +151,20 @@ export function Navigation() {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border">
                       <Coins className="w-4 h-4 text-warning" />
-                      <span className="text-sm font-medium">1,240 Credits</span>
+                      <span className="text-sm font-medium">
+                        {credits === null ? "Credits" : `${credits} Credits`}
+                      </span>
                     </div>
-                    {!isPro && (
+                    {tier === "free" ? (
                       <Link href="/pricing">
                         <Button size="sm" className="text-sm">
                           Upgrade
                         </Button>
                       </Link>
+                    ) : (
+                      <div className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
+                        {planName ?? tier.toUpperCase()}
+                      </div>
                     )}
                     {/* Avatar with dropdown */}
                     <div className="relative" ref={dropdownRef}>
@@ -254,7 +280,9 @@ export function Navigation() {
                   <>
                     <div className="flex items-center gap-2 py-2">
                       <Coins className="w-4 h-4 text-warning" />
-                      <span className="text-sm font-medium">1,240 Credits</span>
+                      <span className="text-sm font-medium">
+                        {credits === null ? "Credits" : `${credits} Credits`}
+                      </span>
                     </div>
                     <Link
                       href="/profile"
@@ -264,13 +292,17 @@ export function Navigation() {
                       <User className="w-4 h-4 text-muted-foreground" />
                       Account
                     </Link>
-                    {!isPro && (
+                    {tier === "free" ? (
                       <Link
                         href="/pricing"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <Button className="w-full">Upgrade</Button>
                       </Link>
+                    ) : (
+                      <div className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
+                        {planName ?? tier.toUpperCase()}
+                      </div>
                     )}
                     <button
                       onClick={() => {
