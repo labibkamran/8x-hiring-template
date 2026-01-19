@@ -25,6 +25,7 @@ A modern SaaS starter template for frontend engineering assessments. Built with 
     - [Security Principles](#security-principles)
     - [Data Access Patterns](#data-access-patterns)
     - [Production Hardening](#production-hardening)
+- [User Journey Flow](#user-journey-flow)
 - [Notes](#notes)
 
 ## Project Setup
