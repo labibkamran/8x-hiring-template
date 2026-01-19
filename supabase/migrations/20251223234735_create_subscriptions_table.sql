@@ -494,3 +494,4 @@ WHERE s.status = 'active'
 
 GRANT EXECUTE ON FUNCTION public.create_generation(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT SELECT ON public.generations_safe TO authenticated;
+GRANT SELECT ON public.generations TO authenticated;
