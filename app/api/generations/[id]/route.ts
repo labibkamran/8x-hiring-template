@@ -1,13 +1,14 @@
 /*
   Single generation API for retrieving a generation by id via safe view.
 */
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET(req: Request, { params }: { params: { id?: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await context.params
     const urlId = req.url ? req.url.split("/").pop() : undefined
-    const id = params?.id ?? urlId
+    const id = routeId ?? urlId
     if (!id || id === "undefined") {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 })
     }
