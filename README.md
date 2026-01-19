@@ -2,6 +2,17 @@
 
 A modern SaaS starter template for frontend engineering assessments. Built with Next.js 16, React 19, TypeScript, Tailwind CSS, and Supabase.
 
+## Project Overview
+
+Genify.ai is a locally runnable SaaS demo. It includes authentication, pricing and subscription flows, a credit-based video generation feature, and a production-style Supabase backend with RLS and RPCs. The goal is to demonstrate clean UX, safe data access patterns, and a realistic end‑to‑end workflow without real AI or payments.
+
+Key highlights:
+- Auth with Supabase (sign up/in/out)
+- Subscription tiers with credits and fake checkout
+- Video generation flow with preview states, history, and detail pages
+- Secure database design (RLS, RPCs, audit ledger)
+- Polished UI across pricing, profile, privacy, and generation screens
+
 ## Index
 
 - [Project Setup](#project-setup)
@@ -27,6 +38,10 @@ A modern SaaS starter template for frontend engineering assessments. Built with 
     - [Production Hardening](#production-hardening)
 - [User Journey Flow](#user-journey-flow)
 - [Notes](#notes)
+
+## Loom Demo
+
+https://www.loom.com/share/18f4ba62a329408fa410afec638f4405
 
 ## Project Setup
 
@@ -463,5 +478,3 @@ sequenceDiagram
 - **Test accounts**: Use any email/password to sign up locally
 
 ---
-
-
