@@ -228,6 +228,8 @@ graph TB
     style AG fill:#e8f5e9
 ```
 
+Note: The cron job shown here (for monthly topups/tier checks) is included in the schema but is not invoked in this repo. In production it’s typically triggered by Stripe webhooks or a scheduler.
+
 ### Database Security Summary
 
 #### Row-Level Security Policies
@@ -310,6 +312,149 @@ graph TB
 - Tier enforcement happens at the **database boundary**, not just in UI.
 - Credit changes are **auditable and atomic**, preventing balance drift.
 - RLS ensures **tenant isolation** even if client queries are compromised.
+
+### User Journey Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant SB as Supabase Auth
+    participant DB as Database
+    participant T as Triggers
+    participant RPC as RPC Functions
+
+    Note over U,RPC: 1. SIGNUP FLOW
+    U->>F: Sign up with email/password
+    F->>SB: auth.signUp()
+    SB->>DB: INSERT auth.users
+    DB->>T: TRIGGER: handle_new_user()
+    activate T
+    T->>DB: INSERT subscriptions (Free plan)
+    T->>DB: INSERT credits (balance: 100)
+    T->>DB: INSERT credit_transactions (signup_bonus)
+    T-->>SB: User created successfully
+    deactivate T
+    SB-->>F: Session token
+    F-->>U: Redirect to /video-generation
+
+    Note over U,RPC: 2. VIEW DASHBOARD
+    U->>F: Navigate to profile
+    F->>RPC: get_my_dashboard()
+    activate RPC
+    RPC->>DB: SELECT subscriptions JOIN plans JOIN credits
+    DB-->>RPC: {plan: "Free", credits: 100}
+    RPC-->>F: Dashboard data
+    deactivate RPC
+    F-->>U: Display: Free plan, 100 credits
+
+    Note over U,RPC: 3. GENERATE VIDEO (First Time)
+    U->>F: Fill form: prompt, model, aspect_ratio
+    F->>F: Check: is tier = 'free' AND model = 'sora'?
+    Note over F: Frontend validation (optional)
+    F->>RPC: create_generation(...)
+    activate RPC
+    RPC->>DB: SELECT subscription + plan (tier check)
+    DB-->>RPC: tier = 'free'
+    RPC->>RPC: Validate: free cannot use Sora
+    alt Settings Not Allowed
+        RPC-->>F: ERROR: "Upgrade to Pro"
+        F-->>U: Show upgrade modal
+    else Settings Allowed
+        RPC->>RPC: Call spend_credits(30, 'video_generation')
+        activate RPC
+        RPC->>DB: SELECT credits FOR UPDATE
+        DB-->>RPC: balance = 100
+        RPC->>DB: UPDATE credits SET balance = 70
+        RPC->>DB: INSERT credit_transactions (spend, -30)
+        RPC-->>RPC: Credits deducted
+        deactivate RPC
+        RPC->>DB: SELECT random demo_video
+        DB-->>RPC: video_url
+        RPC->>DB: INSERT generations
+        RPC-->>F: generation_id
+        deactivate RPC
+        F-->>U: Show video preview
+    end
+
+    Note over U,RPC: 4. VIEW GENERATION HISTORY
+    U->>F: Navigate to /history
+    F->>DB: SELECT * FROM generations_secure
+    activate DB
+    DB->>DB: Check user tier via JOIN
+    alt User = Free
+        DB-->>F: result_url = NULL (blocked)
+    else User = Pro
+        DB-->>F: result_url visible
+    end
+    deactivate DB
+    F-->>U: Display generations list
+
+    Note over U,RPC: 5. RUN OUT OF CREDITS
+    U->>F: Try to generate another video
+    F->>RPC: create_generation(...)
+    activate RPC
+    RPC->>RPC: Call spend_credits(30, ...)
+    activate RPC
+    RPC->>DB: SELECT credits FOR UPDATE
+    DB-->>RPC: balance = 10 (insufficient!)
+    RPC-->>RPC: RAISE EXCEPTION: 'Insufficient credits'
+    deactivate RPC
+    RPC-->>F: ERROR: Insufficient credits
+    deactivate RPC
+    F-->>U: "Upgrade to continue generating"
+
+    Note over U,RPC: 6. UPGRADE TO PRO
+    U->>F: Click "Upgrade to Pro"
+    F-->>U: Show pricing page
+    U->>F: Click "Subscribe" on Pro plan
+    F-->>U: Show fake checkout modal
+    U->>F: Submit payment (fake)
+    F->>RPC: upgrade_plan('pro')
+    activate RPC
+    RPC->>DB: UPDATE subscriptions SET plan_id = pro_plan_id FOR UPDATE
+    RPC->>DB: SELECT credits FOR UPDATE
+    DB-->>RPC: balance = 10
+    RPC->>DB: UPDATE credits SET balance = 1510 (+1500)
+    RPC->>DB: INSERT credit_transactions (plan_upgrade_topup)
+    RPC-->>F: Upgrade successful
+    deactivate RPC
+    F-->>U: "Welcome to Pro! +1500 credits"
+
+    Note over U,RPC: 7. GENERATE AS PRO USER
+    U->>F: Generate with Sora + 16:9 + 1080p
+    F->>RPC: create_generation(..., model='sora')
+    activate RPC
+    RPC->>DB: SELECT subscription
+    DB-->>RPC: tier = 'pro' ✓
+    RPC->>RPC: Validation passed (Pro can use Sora)
+    RPC->>RPC: spend_credits(30, ...)
+    RPC->>DB: SELECT random demo_video
+    RPC->>DB: INSERT generations
+    RPC-->>F: generation_id
+    deactivate RPC
+    F->>DB: SELECT * FROM generations_secure
+    DB-->>F: result_url visible (Pro user)
+    F-->>U: Show HD video + download button
+
+    Note over U,RPC: 8. MONTHLY TOPUP (Background Cron)
+    Note over DB,RPC: 30 days later...
+    RPC->>RPC: Cron: process_monthly_topups()
+    activate RPC
+    RPC->>DB: SELECT subscriptions WHERE next_topup <= NOW
+    DB-->>RPC: [{user_id, credits_per_month: 1500}]
+    RPC->>DB: UPDATE credits SET balance += 1500
+    RPC->>DB: INSERT credit_transactions (monthly_topup)
+    RPC->>DB: UPDATE subscriptions SET next_topup += 1 month
+    RPC-->>RPC: Topup complete
+    deactivate RPC
+    
+    Note over U,RPC: User sees updated balance next login
+
+    rect rgb(240, 248, 255)
+    Note over U,RPC: All operations secured by RLS policies<br/>Credits are atomic (FOR UPDATE locks)<br/>Every transaction logged in audit trail
+    end
+```
 
 ## Notes
 
